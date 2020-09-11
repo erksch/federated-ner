@@ -40,7 +40,7 @@ def set_model_params(module, params_list, start_param_idx=0):
 
     return param_idx
 
-def softmax_cross_entropy_with_logits(logits, targets, batch_size):
+def softmax_cross_entropy_with_logits(logits, targets, batch_size, loss_weights):
     """ Calculates softmax entropy
         Args:
             * logits: (NxC) outputs of dense layer
@@ -51,13 +51,13 @@ def softmax_cross_entropy_with_logits(logits, targets, batch_size):
     norm_logits = logits - logits.max()
     log_probs = norm_logits - norm_logits.exp().sum(dim=1, keepdim=True).log()
     # NLL, reduction = mean
-    return -(targets * log_probs).sum() / batch_size
+    return -(targets * log_probs * loss_weights).sum() / batch_size
 
 def naive_sgd(param, **kwargs):
     return param - kwargs['lr'] * param.grad
 
 @sy.func2plan()
-def training_plan(X, y, batch_size, lr, model_params):
+def training_plan(X, y, batch_size, lr, loss_weights, model_params):
     # inject params into model
     set_model_params(model, model_params)
 
@@ -65,7 +65,7 @@ def training_plan(X, y, batch_size, lr, model_params):
     logits = model.forward(X)
     
     # loss
-    loss = softmax_cross_entropy_with_logits(logits, y, batch_size)
+    loss = softmax_cross_entropy_with_logits(logits, y, batch_size, loss_weights)
 
     # backprop
     loss.backward()
@@ -90,14 +90,13 @@ def training_plan(X, y, batch_size, lr, model_params):
 # Dummy input parameters to make the trace
 B = 10
 X = th.randn(B, 50)
-print(X.shape)
 y = nn.functional.one_hot(th.Tensor(B).random_(0, 4).long(), 5)
-print(y.shape)
+loss_weights = th.randn(5)
 lr = th.tensor([0.01])
 batch_size = th.tensor([B])
     
 print("Building training plan...")
-_ = training_plan.build(X, y, batch_size, lr, model_params, trace_autograd=True)
+_ = training_plan.build(X, y, batch_size, lr, loss_weights, model_params, trace_autograd=True)
 print("Done.")
 
 @sy.func2plan()
@@ -141,7 +140,7 @@ print("Connecting to grid...")
 grid.connect()# These name/version you use in worker
 print("Success!")
 name = "conll"
-version = "1.0.21"
+version = "1.0.22"
 
 client_config = {
     "name": name,
