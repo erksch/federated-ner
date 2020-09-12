@@ -22,7 +22,9 @@ sy.make_hook(globals())
 hook.local_worker.framework = None
 th.random.manual_seed(1)
 
-model = Net()
+EMBEDDING_DIM = 100
+
+model = Net(EMBEDDING_DIM)
 model_params = [param.data for param in model.parameters()]
 
 def set_model_params(module, params_list, start_param_idx=0):
@@ -89,7 +91,7 @@ def training_plan(X, y, batch_size, lr, loss_weights, model_params):
 
 # Dummy input parameters to make the trace
 B = 10
-X = th.randn(B, 50)
+X = th.randn(B, EMBEDDING_DIM)
 y = nn.functional.one_hot(th.Tensor(B).random_(0, 4).long(), 5)
 loss_weights = th.randn(5)
 lr = th.tensor([0.01])
@@ -115,8 +117,8 @@ def eval_plan(X, y, model_params):
 
         return (pred, target)
 
-X = th.randn(100, 50)
-y = nn.functional.one_hot(th.Tensor(100).random_(0, 4).long(), 5)
+X = th.randn(B, EMBEDDING_DIM)
+y = nn.functional.one_hot(th.Tensor(B).random_(0, 4).long(), 5)
 
 print("Building evaluation plan...")
 _ = eval_plan.build(X, y, model_params, trace_autograd=True)
@@ -139,8 +141,8 @@ grid = ModelCentricFLClient(id="test", address=gridAddress, secure=False)
 print("Connecting to grid...")
 grid.connect()# These name/version you use in worker
 print("Success!")
-name = "conll"
-version = "1.0.22"
+name = "conll-100d"
+version = "1.0.0"
 
 client_config = {
     "name": name,
